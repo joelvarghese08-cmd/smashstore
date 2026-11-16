@@ -1,0 +1,301 @@
+/* Smash Store — scroll experience */
+gsap.registerPlugin(ScrollTrigger);
+// phones: don't recalculate every time the address bar shows/hides
+ScrollTrigger.config({ ignoreMobileResize: true });
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DM = 'https://ig.me/m/smashstore._';
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+scrollTo(0, 0);
+
+/* ---------- SOCK SVG ---------- */
+const SOCK = 'M85 10 H215 V290 C215 315 228 330 255 342 C292 358 298 418 262 440 C238 455 190 452 140 440 C98 430 75 405 75 370 C75 335 85 315 85 290 Z';
+let sockN = 0;
+function sockSVG({ base = '#fff6e0', cuff = '#E8201A', heel = '#0d0d0d', layers = ['stripes'], stroke = '#0d0d0d', build = false } = {}) {
+  const id = 's' + (++sockN);
+  const pats = {
+    stripes: `<pattern id="${id}st" width="300" height="56" patternUnits="userSpaceOnUse"><rect y="0" width="300" height="24" fill="#E8201A"/><rect y="24" width="300" height="6" fill="#0d0d0d"/></pattern>`,
+    fire: `<pattern id="${id}fi" width="70" height="90" patternUnits="userSpaceOnUse"><path d="M35 82c-18 0-26-12-24-26 2-12 12-16 10-30 10 6 14 14 14 22 4-6 4-12 2-18 12 8 20 20 20 32 0 12-8 20-22 20z" fill="#FF7A00" stroke="#0d0d0d" stroke-width="3"/><path d="M35 78c-8 0-12-6-11-12 1-6 6-8 6-14 6 4 8 8 8 12 2-2 3-5 2-8 5 4 8 9 8 14 0 5-5 8-13 8z" fill="#FFE500"/></pattern>`,
+    smile: `<pattern id="${id}sm" width="62" height="62" patternUnits="userSpaceOnUse"><circle cx="31" cy="31" r="21" fill="#FFC21A" stroke="#0d0d0d" stroke-width="3"/><circle cx="24" cy="26" r="3" fill="#0d0d0d"/><circle cx="38" cy="26" r="3" fill="#0d0d0d"/><path d="M21 35q10 10 20 0" fill="none" stroke="#0d0d0d" stroke-width="3" stroke-linecap="round"/></pattern>`,
+  };
+  const key = { stripes: 'st', fire: 'fi', smile: 'sm' };
+  const layerSvg = layers.map((l, i) => {
+    const clip = build ? `<clipPath id="${id}k${i}"><rect class="knit" x="0" y="0" width="300" height="0"/></clipPath>` : '';
+    const cAttr = build ? `clip-path="url(#${id}k${i})"` : '';
+    return `${clip}<g class="layer layer-${l}" ${cAttr}><rect width="300" height="470" fill="${l === 'fire' ? '#E8201A' : l === 'smile' ? '#fff6e0' : 'none'}"/><rect width="300" height="470" fill="url(#${id}${key[l]})"/></g>`;
+  }).join('');
+  return `<svg viewBox="0 0 300 470" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs><clipPath id="${id}c"><path d="${SOCK}"/></clipPath>${layers.map(l => pats[l]).join('')}</defs>
+  <g clip-path="url(#${id}c)">
+    <rect width="300" height="470" fill="${base}" class="base"/>
+    ${layerSvg}
+    <g class="trim">
+      <rect x="0" y="0" width="300" height="62" fill="${cuff}"/>
+      ${Array.from({ length: 12 }, (_, i) => `<rect x="${90 + i * 11}" y="6" width="3" height="52" fill="rgba(0,0,0,.18)"/>`).join('')}
+      <circle cx="92" cy="418" r="48" fill="${heel}"/>
+      <circle cx="282" cy="398" r="50" fill="${heel}"/>
+    </g>
+  </g>
+  <path d="${SOCK}" fill="none" stroke="${stroke}" stroke-width="7" stroke-linejoin="round"/>
+</svg>`;
+}
+
+/* ---------- HERO: socks on the line ---------- */
+const hanging = document.getElementById('hanging');
+const hangSet = [
+  { x: 9, y: 9, layers: ['stripes'], cuff: '#0d0d0d', heel: '#E8201A' },
+  { x: 27, y: 15, layers: ['smile'], cuff: '#0d0d0d', heel: '#0d0d0d' },
+  { x: 66, y: 15, layers: ['fire'], cuff: '#fff6e0', heel: '#0d0d0d' },
+  { x: 84, y: 9, layers: ['stripes', 'smile'], cuff: '#E8201A', heel: '#E8201A' },
+];
+hangSet.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'hang';
+  d.style.left = s.x + '%';
+  d.style.top = `calc(70px + ${s.y}px)`;
+  d.innerHTML = `<div class="swing" style="animation-delay:${-i * 0.7}s"><span class="pin"></span>${sockSVG(s)}</div>`;
+  hanging.appendChild(d);
+});
+
+/* split text into chars */
+document.querySelectorAll('[data-split]').forEach(el => {
+  el.innerHTML = el.textContent.trim().split(/\s+/)
+    .map(w => `<span class="word">${[...w].map(c => `<span class="ch">${c}</span>`).join('')}</span>`).join(' ');
+});
+
+/* ---------- BIG BUILD SOCK ---------- */
+document.getElementById('bigSock').innerHTML = sockSVG({ base: '#9a9a9a', cuff: '#7d7d7d', heel: '#6b6b6b', layers: ['stripes', 'fire', 'smile'], build: true, stroke: '#fff6e0' });
+
+/* ---------- MARQUEE ---------- */
+const words = ['BORING IS BANNED', '✦', 'SMASH THE ORDINARY', '✦', 'LOUD FEET ONLY', '✦'];
+document.querySelectorAll('.track').forEach(t => {
+  const html = words.map(w => `<span>${w}</span>`).join('');
+  t.innerHTML = html.repeat(6);
+});
+
+/* ---------- DROPS ---------- */
+const drops = [
+  ['pringles', 'Crunch Time', 'Food fit'],
+  ['flame', 'Classic Fire', 'Heat'],
+  ['fine', "Everything's Fine", 'Mood'],
+  ['smiley', 'Emoji Overload', 'Chaos'],
+  ['turtles', 'Pizza Power', 'Cartoon'],
+  ['garfield', 'Lazy Cat Club', 'Cartoon'],
+  ['shrimp', 'Shrimp Above Rest', 'Food fit'],
+  ['cat', 'I ♥ My Cat', 'Pets'],
+  ['subway', 'Sub Socks', 'Food fit'],
+  ['dad', 'Bye Buddy', 'Meme'],
+];
+document.getElementById('dropsTrack').innerHTML = drops.map(([img, name, tag]) => `
+  <article class="card">
+    <div class="ph"><img src="img/${img}.jpg" alt="${name} socks" loading="lazy"></div>
+    <div class="meta"><h3>${name}</h3><span class="tag">${tag}</span></div>
+    <a class="dm" href="${DM}" target="_blank" rel="noopener">DM “SMASH” →</a>
+  </article>`).join('');
+
+/* ---------- CTA rain ---------- */
+const rain = document.getElementById('rain');
+drops.forEach(([img], i) => {
+  const im = document.createElement('img');
+  im.src = `img/${img}.jpg`; im.alt = '';
+  im.style.left = (i * 10 + Math.random() * 4) + '%';
+  im.style.top = '-30%';
+  rain.appendChild(im);
+});
+
+/* ---------- CURSOR ---------- */
+const cursor = document.getElementById('cursor');
+if (matchMedia('(hover:hover) and (pointer:fine)').matches) {
+  document.documentElement.classList.add('sock-cursor');
+  const sock = document.getElementById('cursorSock');
+  sock.innerHTML = sockSVG({ base: '#fff6e0', cuff: '#E8201A', heel: '#E8201A', layers: ['stripes'] });
+  // position follows the pointer exactly; only the swing lags, so clicks stay precise
+  gsap.set(cursor, { x: -100, y: -100 });
+  const swing = gsap.quickTo(sock, 'rotate', { duration: .6, ease: 'elastic.out(1.2,.35)' });
+  let lastX = 0;
+  addEventListener('mousemove', e => {
+    gsap.set(cursor, { x: e.clientX, y: e.clientY });
+    cursor.classList.add('on');
+    swing(gsap.utils.clamp(-50, 50, (lastX - e.clientX) * 2.2));
+    lastX = e.clientX;
+    clearTimeout(cursor._t);
+    cursor._t = setTimeout(() => swing(0), 60);
+  });
+  document.addEventListener('mouseleave', () => cursor.classList.remove('on'));
+  addEventListener('mousedown', () => cursor.classList.add('down'));
+  addEventListener('mouseup', () => cursor.classList.remove('down'));
+  document.addEventListener('mouseover', e => {
+    cursor.classList.toggle('big', !!e.target.closest('a, .card, button'));
+  });
+}
+
+/* ---------- SMOOTH SCROLL ---------- */
+let lenis;
+if (!reduce) {
+  lenis = new Lenis({ lerp: 0.09 });
+  lenis.on('scroll', ScrollTrigger.update);
+  gsap.ticker.add(t => lenis.raf(t * 1000));
+  gsap.ticker.lagSmoothing(0);
+  document.querySelectorAll('.nav a[href^="#"], main a[href^="#"]').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault(); lenis.scrollTo(a.getAttribute('href'), { duration: 1.4 });
+  }));
+}
+
+/* ---------- MOBILE MENU ---------- */
+const burger = document.getElementById('burger');
+const menu = document.getElementById('mobileMenu');
+const setMenu = open => {
+  document.documentElement.classList.toggle('menu-open', open);
+  burger.setAttribute('aria-expanded', open);
+  burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  menu.setAttribute('aria-hidden', !open);
+  if (lenis) open ? lenis.stop() : lenis.start();
+};
+burger.addEventListener('click', () => setMenu(!document.documentElement.classList.contains('menu-open')));
+menu.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  setMenu(false);
+  const target = a.getAttribute('href');
+  lenis ? lenis.scrollTo(target, { duration: 1.4 }) : document.querySelector(target).scrollIntoView({ behavior: 'smooth' });
+}));
+
+/* ---------- LOADER ---------- */
+document.body.classList.add('loading');
+const counter = { v: 0 };
+lenis && lenis.stop();
+const intro = gsap.timeline({ paused: true, onComplete: () => {
+  initScenes();
+  document.body.classList.remove('loading');
+  lenis && lenis.start();
+  ScrollTrigger.refresh();
+}});
+intro
+  .from('.hero-badge', { scale: 0, rotate: -270, duration: 1, ease: 'back.out(1.8)' })
+  .from('.hero-title .row:first-child .ch', { yPercent: 120, rotate: () => gsap.utils.random(-30, 30), opacity: 0, stagger: .06, duration: .9, ease: 'back.out(2)' })
+  .from('.hero-title .row.small .ch', { yPercent: 100, opacity: 0, stagger: .025, duration: .6, ease: 'back.out(2)' }, '-=.6')
+  .from('.hang', { y: -300, stagger: .1, duration: 1, ease: 'bounce.out' }, '-=1')
+  .from('.sticker', { scale: 0, rotate: 40, stagger: .08, duration: .7, ease: 'back.out(2)' }, '-=.8')
+  .from('.hero-sub, .scroll-hint, .nav', { opacity: 0, y: 20, duration: .5 }, '-=.4');
+
+gsap.to(counter, {
+  v: 100, duration: reduce ? .2 : 1.6, ease: 'power2.inOut',
+  onUpdate: () => document.getElementById('count').textContent = Math.round(counter.v),
+  onComplete: () => {
+    gsap.to('#loader', { yPercent: -100, duration: .8, ease: 'power4.inOut', onComplete: () => {
+      document.getElementById('loader').remove();
+    }});
+    intro.timeScale(1.3).play(0);
+  }
+});
+
+/* ---------- SCROLL SCENES ---------- */
+function initScenes() {
+const mm = gsap.matchMedia();
+mm.add('(prefers-reduced-motion: no-preference)', () => {
+
+  /* HERO: letters explode, socks fly off the line */
+  const heroTl = gsap.timeline({
+    scrollTrigger: { trigger: '.hero', start: 'top top', end: '+=120%', scrub: 1, pin: true }
+  });
+  const nr = { immediateRender: false };
+  heroTl
+    .fromTo('.hero-title .ch', { x: 0, y: 0, yPercent: 0, rotate: 0, scale: 1, opacity: 1 }, {
+      ...nr, x: () => gsap.utils.random(-500, 500), y: () => gsap.utils.random(-400, 400),
+      rotate: () => gsap.utils.random(-120, 120), scale: () => gsap.utils.random(.4, 1.6), opacity: 0, stagger: { amount: .3, from: 'center' }
+    }, 0)
+    .fromTo('.hang', { y: 0, rotate: 0 }, { ...nr, y: () => innerHeight * 1.2, rotate: () => gsap.utils.random(-60, 60), stagger: .05 }, 0)
+    .fromTo('.hero-badge', { y: 0, scale: 1, rotate: 0, opacity: 1 }, { ...nr, y: -innerHeight * .5, scale: 2.2, rotate: 200, opacity: 0 }, 0)
+    .to('.line path', { attr: { d: 'M-20 20 Q500 420 1020 20' } }, 0)
+    .to('.sticker', { y: (i) => -innerHeight * (0.6 + i * .15), rotate: (i) => (i % 2 ? 40 : -40) }, 0)
+    .fromTo('.hero-sub, .scroll-hint', { opacity: 1, y: 0 }, { ...nr, opacity: 0, y: -40 }, 0)
+    .fromTo('.hero-wipe', { clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)', duration: .6 }, .45);
+
+  /* BUILD: knit the sock layer by layer */
+  const knits = gsap.utils.toArray('#bigSock .knit');
+  const steps = gsap.utils.toArray('.step');
+  const stepNum = document.getElementById('stepNum');
+  const setStep = i => {
+    steps.forEach((s, j) => s.classList.toggle('active', j === i));
+    stepNum.textContent = String(i + 1).padStart(2, '0');
+  };
+  const buildTl = gsap.timeline({
+    defaults: { ease: 'none' },
+    scrollTrigger: {
+      trigger: '.build', start: 'top top', end: '+=320%', scrub: .6, pin: true,
+      onUpdate: self => setStep(Math.min(3, Math.floor(self.progress * 4.2)))
+    }
+  });
+  buildTl
+    .fromTo('#bigSock svg', { rotate: -8, scale: .9 }, { rotate: 6, scale: 1, duration: 4 }, 0)
+    .to('#buildBar', { scaleX: 1, duration: 4 }, 0)
+    .to('#bigSock .trim rect:first-child', { attr: { fill: '#0d0d0d' }, duration: .3 }, .8)
+    .to('#bigSock .trim circle', { attr: { fill: '#0d0d0d' }, duration: .3 }, .8)
+    .to(knits[0], { attr: { height: 470 }, duration: 1 }, .8)
+    .to('#bigSock .trim rect:first-child', { attr: { fill: '#FFE500' }, duration: .3 }, 1.8)
+    .to('#bigSock .trim circle', { attr: { fill: '#E8201A' }, duration: .3 }, 1.8)
+    .to(knits[1], { attr: { height: 470 }, duration: 1 }, 1.8)
+    .to('#bigSock .trim rect:first-child', { attr: { fill: '#E8201A' }, duration: .3 }, 2.8)
+    .to('#bigSock .trim circle', { attr: { fill: '#0d0d0d' }, duration: .3 }, 2.8)
+    .to(knits[2], { attr: { height: 470 }, duration: 1 }, 2.8)
+    .to('#stamp', { scale: 1, opacity: 1, duration: .3, ease: 'back.out(3)' }, 3.75);
+
+  /* MARQUEE: scroll-linked + velocity skew */
+  gsap.utils.toArray('.track').forEach(t => {
+    const dir = +t.dataset.dir;
+    gsap.fromTo(t, { xPercent: dir > 0 ? 0 : -40 }, {
+      xPercent: dir > 0 ? -40 : 0, ease: 'none',
+      scrollTrigger: { trigger: '.marquees', start: 'top bottom', end: 'bottom top', scrub: true }
+    });
+  });
+  const skewTo = gsap.quickTo('.track', 'skewX', { duration: .4, ease: 'power3' });
+  ScrollTrigger.create({ trigger: '.marquees', start: 'top bottom', end: 'bottom top',
+    onUpdate: self => skewTo(gsap.utils.clamp(-18, 18, self.getVelocity() / -150)) });
+
+  /* DROPS: horizontal ride */
+  const track = document.getElementById('dropsTrack');
+  const dist = () => track.scrollWidth - innerWidth;
+  const hTween = gsap.to(track, {
+    x: () => -dist(), ease: 'none',
+    scrollTrigger: { trigger: '.drops', start: 'top top', end: () => '+=' + dist(), scrub: 1, pin: true, invalidateOnRefresh: true }
+  });
+  gsap.utils.toArray('.card').forEach(card => {
+    gsap.from(card, {
+      y: 120, rotate: 12, opacity: 0, duration: .8, ease: 'back.out(1.6)',
+      scrollTrigger: { trigger: card, containerAnimation: hTween, start: 'left 95%', toggleActions: 'play none none reverse' }
+    });
+  });
+
+  /* WHY */
+  gsap.from('.why-title .ch', { yPercent: 110, opacity: 0, rotate: 20, stagger: .02, ease: 'back.out(2)',
+    scrollTrigger: { trigger: '.why-title', start: 'top 80%', end: 'top 40%', scrub: 1 } });
+  gsap.from('.why-card', { rotateX: -90, y: 100, opacity: 0, stagger: .15, duration: 1, ease: 'back.out(1.4)', transformOrigin: '50% 100%',
+    scrollTrigger: { trigger: '.why-cards', start: 'top 80%' } });
+
+  /* ORDER */
+  gsap.from('.o-step', { y: 80, opacity: 0, stagger: .15, duration: .8, ease: 'back.out(1.8)',
+    scrollTrigger: { trigger: '.order-steps', start: 'top 80%' } });
+  gsap.from('.o-step b', { scale: 0, rotate: -180, stagger: .15, duration: .9, ease: 'back.out(2)',
+    scrollTrigger: { trigger: '.order-steps', start: 'top 80%' } });
+
+  /* CTA: sock rain + title */
+  gsap.utils.toArray('.rain img').forEach((im, i) => {
+    gsap.fromTo(im, { y: 0, rotate: gsap.utils.random(-40, 40) }, {
+      y: () => innerHeight * gsap.utils.random(1.3, 1.9), rotate: gsap.utils.random(-200, 200), ease: 'none',
+      scrollTrigger: { trigger: '.cta', start: 'top bottom', end: 'bottom top', scrub: .5 + (i % 3) * .4 }
+    });
+  });
+  gsap.from('.cta-title span', { yPercent: 100, opacity: 0, scale: .6, stagger: .15, ease: 'back.out(2)',
+    scrollTrigger: { trigger: '.cta', start: 'top 70%', end: 'top 20%', scrub: 1 } });
+});
+}
+
+/* tilt cards on hover */
+document.querySelectorAll('.card, .why-card').forEach(c => {
+  c.addEventListener('mousemove', e => {
+    const r = c.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+    gsap.to(c, { rotateY: x * 14, rotateX: -y * 14, transformPerspective: 800, duration: .4 });
+  });
+  c.addEventListener('mouseleave', () => gsap.to(c, { rotateY: 0, rotateX: 0, duration: .6, ease: 'elastic.out(1,.5)' }));
+});
