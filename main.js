@@ -65,7 +65,17 @@ document.querySelectorAll('[data-split]').forEach(el => {
 });
 
 /* ---------- BIG BUILD SOCK ---------- */
-document.getElementById('bigSock').innerHTML = sockSVG({ base: '#9a9a9a', cuff: '#7d7d7d', heel: '#6b6b6b', layers: ['stripes', 'fire', 'smile'], build: true, stroke: '#fff6e0' });
+{
+  const big = document.getElementById('bigSock');
+  const layer = (cls, svg) => `<div class="sl ${cls}">${svg}</div>`;
+  const knit = svg => `<div class="sl knit"><div class="knit-in">${svg}</div></div>`;
+  big.insertAdjacentHTML('afterbegin',
+    layer('shadow', sockSVG({ base: '#E8201A', cuff: '#E8201A', heel: '#E8201A', layers: [], stroke: '#E8201A' })) +
+    layer('plain', sockSVG({ base: '#9a9a9a', cuff: '#7d7d7d', heel: '#6b6b6b', layers: [], stroke: '#fff6e0' })) +
+    knit(sockSVG({ base: '#fff6e0', cuff: '#0d0d0d', heel: '#0d0d0d', layers: ['stripes'], stroke: '#fff6e0' })) +
+    knit(sockSVG({ base: '#E8201A', cuff: '#FFE500', heel: '#E8201A', layers: ['fire'], stroke: '#fff6e0' })) +
+    knit(sockSVG({ base: '#fff6e0', cuff: '#E8201A', heel: '#0d0d0d', layers: ['smile'], stroke: '#fff6e0' })));
+}
 
 /* ---------- MARQUEE ---------- */
 const words = ['BORING IS BANNED', '✦', 'SMASH THE ORDINARY', '✦', 'LOUD FEET ONLY', '✦'];
@@ -223,6 +233,8 @@ if (matchMedia('(hover:hover) and (pointer:fine)').matches) {
 }
 
 /* ---------- SMOOTH SCROLL ---------- */
+let heroST = null;
+const scrollTarget = href => href === '#build' ? (heroST ? heroST.start + (heroST.end - heroST.start) * 0.32 : '#hero') : href;
 let lenis;
 if (!reduce) {
   lenis = new Lenis({ lerp: 0.09 });
@@ -231,7 +243,7 @@ if (!reduce) {
   gsap.ticker.add(t => lenis.raf(t * 1000));
   gsap.ticker.lagSmoothing(0);
   document.querySelectorAll('.nav a[href^="#"], main a[href^="#"]').forEach(a => a.addEventListener('click', e => {
-    e.preventDefault(); lenis.scrollTo(a.getAttribute('href'), { duration: 1.4 });
+    e.preventDefault(); lenis.scrollTo(scrollTarget(a.getAttribute('href')), { duration: 1.4 });
   }));
 }
 
@@ -250,7 +262,8 @@ menu.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e
   e.preventDefault();
   setMenu(false);
   const target = a.getAttribute('href');
-  lenis ? lenis.scrollTo(target, { duration: 1.4 }) : document.querySelector(target).scrollIntoView({ behavior: 'smooth' });
+  if (lenis) lenis.scrollTo(scrollTarget(target), { duration: 1.4 });
+  else document.querySelector(target === '#build' ? '#hero' : target).scrollIntoView({ behavior: 'smooth' });
 }));
 
 /* ---------- LOADER ---------- */
@@ -272,13 +285,13 @@ intro
   .from('.hero-sub, .scroll-hint, .nav', { opacity: 0, y: 20, duration: .5 }, '-=.4');
 
 gsap.to(counter, {
-  v: 100, duration: reduce ? .2 : 1.6, ease: 'power2.inOut',
+  v: 100, duration: reduce ? .2 : .8, ease: 'power2.inOut',
   onUpdate: () => document.getElementById('count').textContent = Math.round(counter.v),
   onComplete: () => {
-    gsap.to('#loader', { yPercent: -100, duration: .8, ease: 'power4.inOut', onComplete: () => {
+    gsap.to('#loader', { yPercent: -100, duration: .6, ease: 'power4.inOut', onComplete: () => {
       document.getElementById('loader').remove();
     }});
-    intro.timeScale(1.3).play(0);
+    intro.timeScale(1.9).play(0);
   }
 });
 
@@ -287,51 +300,53 @@ function initScenes() {
 const mm = gsap.matchMedia();
 mm.add('(prefers-reduced-motion: no-preference)', () => {
 
-  /* HERO: letters explode, socks fly off the line */
-  const heroTl = gsap.timeline({
-    scrollTrigger: { trigger: '.hero', start: 'top top', end: '+=120%', scrub: 1, pin: true }
-  });
-  const nr = { immediateRender: false };
-  heroTl
-    .fromTo('.hero-title .ch', { x: 0, y: 0, yPercent: 0, rotate: 0, scale: 1, opacity: 1 }, {
-      ...nr, x: () => gsap.utils.random(-500, 500), y: () => gsap.utils.random(-400, 400),
-      rotate: () => gsap.utils.random(-120, 120), scale: () => gsap.utils.random(.4, 1.6), opacity: 0, stagger: { amount: .3, from: 'center' }
-    }, 0)
-    .fromTo('.hang', { y: 0, rotate: 0 }, { ...nr, y: () => innerHeight * 1.2, rotate: () => gsap.utils.random(-60, 60), stagger: .05 }, 0)
-    .fromTo('.hero-badge', { y: 0, scale: 1, rotate: 0, opacity: 1 }, { ...nr, y: -innerHeight * .5, scale: 2.2, rotate: 200, opacity: 0 }, 0)
-    .to('.line path', { attr: { d: 'M-20 20 Q500 420 1020 20' } }, 0)
-    .to('.sticker', { y: (i) => -innerHeight * (0.6 + i * .15), rotate: (i) => (i % 2 ? 40 : -40) }, 0)
-    .fromTo('.hero-sub, .scroll-hint', { opacity: 1, y: 0 }, { ...nr, opacity: 0, y: -40 }, 0)
-    .fromTo('.hero-wipe', { clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)', duration: .6 }, .45);
-
-  /* BUILD: knit the sock layer by layer */
-  const knits = gsap.utils.toArray('#bigSock .knit');
+  /* ONE SCENE: the hero clears away, then a sock drops in and gets knitted.
+     Only transform and opacity are animated, so it stays smooth on phones. */
   const steps = gsap.utils.toArray('.step');
   const stepNum = document.getElementById('stepNum');
+  let curStep = -1;
   const setStep = i => {
-    steps.forEach((s, j) => s.classList.toggle('active', j === i));
+    if (i === curStep) return;
+    curStep = i;
+    steps.forEach((s, k) => s.classList.toggle('active', k === i));
     stepNum.textContent = String(i + 1).padStart(2, '0');
   };
-  const buildTl = gsap.timeline({
+  const knits = gsap.utils.toArray('#bigSock .knit');
+  const knitIns = gsap.utils.toArray('#bigSock .knit-in');
+  const tl = gsap.timeline({
     defaults: { ease: 'none' },
     scrollTrigger: {
-      trigger: '.build', start: 'top top', end: '+=320%', scrub: .6, pin: true,
-      onUpdate: self => setStep(Math.min(3, Math.floor(self.progress * 4.2)))
-    }
+      trigger: '.hero', start: 'top top', end: '+=380%', scrub: .8, pin: true,
+    },
+    onUpdate: () => { const t = tl.time(); setStep(t < 4 ? 0 : t < 5.6 ? 1 : t < 7.2 ? 2 : 3); }
   });
-  buildTl
-    .fromTo('#bigSock svg', { rotate: -8, scale: .9 }, { rotate: 6, scale: 1, duration: 4 }, 0)
-    .to('#buildBar', { scaleX: 1, duration: 4 }, 0)
-    .to('#bigSock .trim rect:first-child', { attr: { fill: '#0d0d0d' }, duration: .3 }, .8)
-    .to('#bigSock .trim circle', { attr: { fill: '#0d0d0d' }, duration: .3 }, .8)
-    .to(knits[0], { attr: { height: 470 }, duration: 1 }, .8)
-    .to('#bigSock .trim rect:first-child', { attr: { fill: '#FFE500' }, duration: .3 }, 1.8)
-    .to('#bigSock .trim circle', { attr: { fill: '#E8201A' }, duration: .3 }, 1.8)
-    .to(knits[1], { attr: { height: 470 }, duration: 1 }, 1.8)
-    .to('#bigSock .trim rect:first-child', { attr: { fill: '#E8201A' }, duration: .3 }, 2.8)
-    .to('#bigSock .trim circle', { attr: { fill: '#0d0d0d' }, duration: .3 }, 2.8)
-    .to(knits[2], { attr: { height: 470 }, duration: 1 }, 2.8)
-    .to('#stamp', { scale: 1, opacity: 1, duration: .3, ease: 'back.out(3)' }, 3.75);
+  heroST = tl.scrollTrigger;
+  const nr = { immediateRender: false };
+  tl
+    // 1. the front page clears away
+    .fromTo('.hero-title .row:first-child', { y: 0, scale: 1, opacity: 1 }, { ...nr, y: () => -innerHeight * .35, scale: 1.15, opacity: 0, duration: 1.6, ease: 'power2.in' }, 0)
+    .fromTo('.hero-title .row.small', { y: 0, opacity: 1 }, { ...nr, y: () => -innerHeight * .25, opacity: 0, duration: 1.4, ease: 'power2.in' }, .15)
+    .fromTo('.hero-badge', { y: 0, rotate: 0, opacity: 1 }, { ...nr, y: () => -innerHeight * .45, rotate: 180, opacity: 0, duration: 1.4, ease: 'power2.in' }, 0)
+    .fromTo('.hero-sub, .scroll-hint', { y: 0, opacity: 1 }, { ...nr, y: -40, opacity: 0, duration: .6 }, 0)
+    .fromTo('.hang', { y: 0, rotate: 0 }, { ...nr, y: () => innerHeight * 1.2, rotate: i => [-40, 30, -25, 45][i % 4], stagger: .1, duration: 1.4, ease: 'power2.in' }, .2)
+    .to('.line path', { attr: { d: 'M-20 20 Q500 420 1020 20' }, duration: 1.2 }, .2)
+    .fromTo('.sticker', { y: 0, rotate: 0 }, { ...nr, y: i => -innerHeight * (0.7 + i * .15), rotate: i => (i % 2 ? 40 : -40), duration: 1.6, ease: 'power2.in' }, 0)
+    .fromTo('.hero-dark', { y: 0, yPercent: 100 }, { ...nr, y: 0, yPercent: 0, duration: 1.1, ease: 'power2.inOut' }, .9)
+    // 2. a plain sock drops in, the steps appear
+    .fromTo('#bigSock', { y: () => -innerHeight * 1.3, rotate: -30 }, { y: 0, rotate: -6, duration: 1.2, ease: 'back.out(1.3)' }, 1.8)
+    .fromTo('.build-text', { y: 30, opacity: 0 }, { ...nr, y: 0, opacity: 1, duration: .6 }, 2.6)
+    .fromTo('#buildBar', { scaleX: 0 }, { ...nr, scaleX: 1, duration: 5.4 }, 2.6)
+    .to('#bigSock', { rotate: 6, duration: 5.6 }, 3)
+    // 3. knit stripes, fire, smileys (each layer slides in like a wipe)
+    .fromTo(knits[0], { y: 0, yPercent: -101 }, { ...nr, y: 0, yPercent: 0, duration: 1.2 }, 3.2)
+    .fromTo(knitIns[0], { y: 0, yPercent: 101 }, { ...nr, y: 0, yPercent: 0, duration: 1.2 }, 3.2)
+    .fromTo(knits[1], { y: 0, yPercent: -101 }, { ...nr, y: 0, yPercent: 0, duration: 1.2 }, 4.8)
+    .fromTo(knitIns[1], { y: 0, yPercent: 101 }, { ...nr, y: 0, yPercent: 0, duration: 1.2 }, 4.8)
+    .fromTo(knits[2], { y: 0, yPercent: -101 }, { ...nr, y: 0, yPercent: 0, duration: 1.2 }, 6.4)
+    .fromTo(knitIns[2], { y: 0, yPercent: 101 }, { ...nr, y: 0, yPercent: 0, duration: 1.2 }, 6.4)
+    // 4. stamp, then a short hold before the page moves on
+    .fromTo('#stamp', { scale: 0, opacity: 0 }, { ...nr, scale: 1, opacity: 1, duration: .5, ease: 'back.out(3)' }, 8)
+    .to({}, { duration: 1 }, 8.5);
 
   /* MARQUEE: scroll-linked + velocity skew */
   gsap.utils.toArray('.track').forEach(t => {
