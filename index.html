@@ -100,13 +100,16 @@
     <div class="marquee m2"><div class="track" data-dir="-1"></div></div>
   </section>
 
-  <!-- DROPS (horizontal) -->
-  <section class="drops" id="drops">
-    <div class="drops-head">
-      <h2>The <span>Drops</span></h2>
-      <p>Swipe through the madness →</p>
+  <!-- SHOP -->
+  <section class="shop" id="drops">
+    <div class="shop-head">
+      <div>
+        <h2>Shop the <span>Drops</span></h2>
+        <p>Add your pairs to the bag, then send the order to us on Instagram.</p>
+      </div>
+      <div class="chips" id="chips" aria-label="Filter by style"></div>
     </div>
-    <div class="drops-track" id="dropsTrack"></div>
+    <div class="shop-grid" id="shopGrid"></div>
   </section>
 
   <!-- WHY -->
@@ -136,6 +139,19 @@
     <a class="btn btn-big" href="https://ig.me/m/smashstore._" target="_blank" rel="noopener">DM “SMASH” to order</a>
   </section>
 </main>
+
+<button class="bag-btn" id="bagBtn" aria-label="Open bag" aria-controls="bag" aria-expanded="false">Bag <b id="bagCount">0</b></button>
+<div class="bag-scrim" id="bagScrim"></div>
+<aside class="bag" id="bag" aria-label="Your bag" aria-hidden="true">
+  <div class="bag-head"><h3>Your bag</h3><button class="bag-x" id="bagClose" aria-label="Close bag">✕</button></div>
+  <div class="bag-items" id="bagItems" data-lenis-prevent></div>
+  <div class="bag-foot">
+    <div class="bag-sum"><span id="bagPairs">0 pairs</span><span id="bagTotal"></span></div>
+    <button class="btn bag-order" id="bagOrder" disabled>Order on Instagram</button>
+    <p class="bag-note">We copy your order for you. Paste it in the DM to @smashstore._ and we'll confirm.</p>
+  </div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <footer class="footer">
   <img src="img/logo.png" alt="">

@@ -74,31 +74,123 @@ document.querySelectorAll('.track').forEach(t => {
   t.innerHTML = html.repeat(6);
 });
 
-/* ---------- DROPS ---------- */
+/* ---------- SHOP ---------- */
+// price: put a number in rupees (e.g. 299) to show it; null shows "Price on DM"
 const drops = [
-  ['pringles', 'Crunch Time', 'Food fit'],
-  ['flame', 'Classic Fire', 'Heat'],
-  ['fine', "Everything's Fine", 'Mood'],
-  ['smiley', 'Emoji Overload', 'Chaos'],
-  ['turtles', 'Pizza Power', 'Cartoon'],
-  ['garfield', 'Lazy Cat Club', 'Cartoon'],
-  ['shrimp', 'Shrimp Above Rest', 'Food fit'],
-  ['cat', 'I ♥ My Cat', 'Pets'],
-  ['subway', 'Sub Socks', 'Food fit'],
-  ['dad', 'Bye Buddy', 'Meme'],
+  { id: 'pringles', name: 'Crunch Time', tag: 'Food fit', price: null },
+  { id: 'flame', name: 'Classic Fire', tag: 'Heat', price: null },
+  { id: 'fine', name: "Everything's Fine", tag: 'Mood', price: null },
+  { id: 'smiley', name: 'Emoji Overload', tag: 'Chaos', price: null },
+  { id: 'turtles', name: 'Pizza Power', tag: 'Cartoon', price: null },
+  { id: 'garfield', name: 'Lazy Cat Club', tag: 'Cartoon', price: null },
+  { id: 'shrimp', name: 'Shrimp Above Rest', tag: 'Food fit', price: null },
+  { id: 'cat', name: 'I ♥ My Cat', tag: 'Pets', price: null },
+  { id: 'subway', name: 'Sub Socks', tag: 'Food fit', price: null },
+  { id: 'dad', name: 'Bye Buddy', tag: 'Meme', price: null },
 ];
-document.getElementById('dropsTrack').innerHTML = drops.map(([img, name, tag]) => `
-  <article class="card">
-    <div class="ph"><img src="img/${img}.jpg" alt="${name} socks" loading="lazy"></div>
-    <div class="meta"><h3>${name}</h3><span class="tag">${tag}</span></div>
-    <a class="dm" href="${DM}" target="_blank" rel="noopener">DM “SMASH” →</a>
+const byId = Object.fromEntries(drops.map(p => [p.id, p]));
+const rupees = n => '₹' + n.toLocaleString('en-IN');
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const $ = id => document.getElementById(id);
+
+const grid = $('shopGrid');
+grid.innerHTML = drops.map(p => `
+  <article class="prod" data-tag="${esc(p.tag)}">
+    <div class="ph"><img src="img/${p.id}.jpg" alt="${esc(p.name)} socks" loading="lazy"><span class="tag">${esc(p.tag)}</span></div>
+    <div class="info"><h3>${esc(p.name)}</h3>
+      ${p.price ? `<p class="price">${rupees(p.price)}</p>` : `<p class="price ask">Price on DM</p>`}</div>
+    <button class="add" data-id="${p.id}">Add to bag</button>
   </article>`).join('');
+
+const tags = ['All', ...new Set(drops.map(p => p.tag))];
+const chips = $('chips');
+chips.innerHTML = tags.map((t, i) => `<button class="chip" aria-pressed="${i === 0}" data-tag="${esc(t)}">${esc(t)}</button>`).join('');
+chips.addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  chips.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c === b));
+  grid.querySelectorAll('.prod').forEach(card => { card.hidden = b.dataset.tag !== 'All' && card.dataset.tag !== b.dataset.tag; });
+  ScrollTrigger.refresh();
+});
+
+/* bag: kept in this browser only */
+let bag = {};
+try { bag = JSON.parse(localStorage.getItem('smashBag') || '{}') || {}; } catch (e) { bag = {}; }
+for (const id in bag) if (!byId[id] || !(bag[id] > 0)) delete bag[id];
+const save = () => { try { localStorage.setItem('smashBag', JSON.stringify(bag)); } catch (e) {} };
+const toast = msg => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500); };
+const pairCount = () => Object.values(bag).reduce((s, n) => s + n, 0);
+const allPriced = ids => ids.length > 0 && ids.every(id => byId[id].price);
+const totalOf = ids => ids.reduce((s, id) => s + bag[id] * byId[id].price, 0);
+
+function renderBag() {
+  const ids = Object.keys(bag);
+  const pairs = pairCount();
+  $('bagCount').textContent = pairs;
+  $('bagPairs').textContent = pairs + (pairs === 1 ? ' pair' : ' pairs');
+  $('bagTotal').textContent = allPriced(ids) ? rupees(totalOf(ids)) : (ids.length ? 'Price on DM' : '');
+  $('bagOrder').disabled = !pairs;
+  $('bagItems').innerHTML = ids.length ? ids.map(id => {
+    const p = byId[id];
+    return `<div class="bag-line">
+      <img src="img/${id}.jpg" alt="">
+      <div><h4>${esc(p.name)}</h4><p class="lp">${p.price ? rupees(p.price) + ' each' : 'Price on DM'}</p><button class="rm" data-rm="${id}">Remove</button></div>
+      <div class="qty"><button data-dec="${id}" aria-label="One less ${esc(p.name)}">−</button><span>${bag[id]}</span><button data-inc="${id}" aria-label="One more ${esc(p.name)}">+</button></div>
+    </div>`;
+  }).join('') : `<p class="bag-empty"><b>Bag's empty.</b>Boring. Go add some loud socks.</p>`;
+}
+renderBag();
+
+grid.addEventListener('click', e => {
+  const b = e.target.closest('.add'); if (!b) return;
+  bag[b.dataset.id] = (bag[b.dataset.id] || 0) + 1;
+  save(); renderBag();
+  b.textContent = 'Added ✓'; b.classList.add('added');
+  clearTimeout(b._h); b._h = setTimeout(() => { b.textContent = 'Add to bag'; b.classList.remove('added'); }, 1200);
+  const bb = $('bagBtn'); bb.classList.remove('bump'); void bb.offsetWidth; bb.classList.add('bump');
+});
+$('bagItems').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  const { inc, dec, rm } = t.dataset;
+  if (inc) bag[inc]++;
+  if (dec) { bag[dec]--; if (bag[dec] < 1) delete bag[dec]; }
+  if (rm) delete bag[rm];
+  save(); renderBag();
+});
+
+function setBag(open) {
+  document.documentElement.classList.toggle('bag-open', open);
+  $('bag').setAttribute('aria-hidden', String(!open));
+  $('bagBtn').setAttribute('aria-expanded', String(open));
+  if (window.lenisRef) open ? window.lenisRef.stop() : window.lenisRef.start();
+}
+$('bagBtn').addEventListener('click', () => setBag(true));
+$('bagClose').addEventListener('click', () => setBag(false));
+$('bagScrim').addEventListener('click', () => setBag(false));
+addEventListener('keydown', e => { if (e.key === 'Escape') setBag(false); });
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove(); return ok;
+}
+$('bagOrder').addEventListener('click', () => {
+  const ids = Object.keys(bag); if (!ids.length) return;
+  const lines = ids.map(id => `• ${byId[id].name} x${bag[id]}`).join('\n');
+  const total = allPriced(ids) ? `\nTotal: ${rupees(totalOf(ids))}` : '';
+  const msg = `SMASH! Hi Smash Store, I'd like to order:\n${lines}\nPairs: ${pairCount()}${total}`;
+  // copy first (needs the click), then open the DM in a new tab
+  copyText(msg).then(ok => toast(ok ? 'Order copied! Paste it in the Instagram DM.' : 'Send us your order in the Instagram DM.'));
+  window.open(DM, '_blank', 'noopener');
+});
 
 /* ---------- CTA rain ---------- */
 const rain = document.getElementById('rain');
-drops.forEach(([img], i) => {
+drops.forEach(({ id }, i) => {
   const im = document.createElement('img');
-  im.src = `img/${img}.jpg`; im.alt = '';
+  im.src = `img/${id}.jpg`; im.alt = '';
   im.style.left = (i * 10 + Math.random() * 4) + '%';
   im.style.top = '-30%';
   rain.appendChild(im);
@@ -126,7 +218,7 @@ if (matchMedia('(hover:hover) and (pointer:fine)').matches) {
   addEventListener('mousedown', () => cursor.classList.add('down'));
   addEventListener('mouseup', () => cursor.classList.remove('down'));
   document.addEventListener('mouseover', e => {
-    cursor.classList.toggle('big', !!e.target.closest('a, .card, button'));
+    cursor.classList.toggle('big', !!e.target.closest('a, button, .chip'));
   });
 }
 
@@ -134,6 +226,7 @@ if (matchMedia('(hover:hover) and (pointer:fine)').matches) {
 let lenis;
 if (!reduce) {
   lenis = new Lenis({ lerp: 0.09 });
+  window.lenisRef = lenis;
   lenis.on('scroll', ScrollTrigger.update);
   gsap.ticker.add(t => lenis.raf(t * 1000));
   gsap.ticker.lagSmoothing(0);
@@ -252,20 +345,6 @@ mm.add('(prefers-reduced-motion: no-preference)', () => {
   ScrollTrigger.create({ trigger: '.marquees', start: 'top bottom', end: 'bottom top',
     onUpdate: self => skewTo(gsap.utils.clamp(-18, 18, self.getVelocity() / -150)) });
 
-  /* DROPS: horizontal ride */
-  const track = document.getElementById('dropsTrack');
-  const dist = () => track.scrollWidth - innerWidth;
-  const hTween = gsap.to(track, {
-    x: () => -dist(), ease: 'none',
-    scrollTrigger: { trigger: '.drops', start: 'top top', end: () => '+=' + dist(), scrub: 1, pin: true, invalidateOnRefresh: true }
-  });
-  gsap.utils.toArray('.card').forEach(card => {
-    gsap.from(card, {
-      y: 120, rotate: 12, opacity: 0, duration: .8, ease: 'back.out(1.6)',
-      scrollTrigger: { trigger: card, containerAnimation: hTween, start: 'left 95%', toggleActions: 'play none none reverse' }
-    });
-  });
-
   /* WHY */
   gsap.from('.why-title .ch', { yPercent: 110, opacity: 0, rotate: 20, stagger: .02, ease: 'back.out(2)',
     scrollTrigger: { trigger: '.why-title', start: 'top 80%', end: 'top 40%', scrub: 1 } });
@@ -291,7 +370,7 @@ mm.add('(prefers-reduced-motion: no-preference)', () => {
 }
 
 /* tilt cards on hover */
-document.querySelectorAll('.card, .why-card').forEach(c => {
+document.querySelectorAll('.why-card').forEach(c => {
   c.addEventListener('mousemove', e => {
     const r = c.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
